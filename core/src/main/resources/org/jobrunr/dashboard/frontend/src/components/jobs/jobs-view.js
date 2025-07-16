@@ -4,7 +4,7 @@ import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
 import Box from "@mui/material/Box";
 import LoadingIndicator from "../LoadingIndicator";
-import JobsTable from "../utils/jobs-table";
+import JobsTable from "./jobs-table";
 import {jobStateToHumanReadableName} from "../utils/job-utils";
 import VersionFooter from "../utils/version-footer";
 import {JobRunrProNotice} from "../utils/jobrunr-pro-notice";
@@ -31,17 +31,19 @@ const JobsView = () => {
     }
 
     useEffect(() => {
+        const abortController = new AbortController();
         setIsLoading(true);
         const offset = (page) * 20;
         const limit = 20;
         let url = `/api/jobs?state=${jobState.toUpperCase()}&offset=${offset}&limit=${limit}&order=${sort}`;
-        fetch(url)
+        fetch(url, {signal: abortController.signal})
             .then(res => res.json())
             .then(response => {
                 setJobPage(response);
                 setIsLoading(false);
             })
             .catch(error => console.log(error));
+        return () => abortController.abort("Starting a new request due to state changes");
     }, [page, jobState, sort, location.key]);
 
     return (
