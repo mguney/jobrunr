@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
+@SuppressWarnings("ReturnValueIgnored")
 public class InstantMocker {
 
     public static final Instant FIXED_INSTANT_RIGHT_BEFORE_THE_HOUR = Instant.parse("2022-12-13T13:59:58Z");
@@ -30,7 +31,7 @@ public class InstantMocker {
     public static MockedStaticHolder mockTime(ZonedDateTime zonedDateTime) {
         MockedStatic<ZonedDateTime> zonedDateTimeMock = Mockito.mockStatic(ZonedDateTime.class, Mockito.CALLS_REAL_METHODS);
         MockedStatic<Instant> instantMockedStatic = mockTime(zonedDateTime.toInstant());
-        zonedDateTimeMock.when(() -> ZonedDateTime.now()).thenReturn(zonedDateTime);
+        zonedDateTimeMock.when(() -> ZonedDateTime.now(ZoneId.systemDefault())).thenReturn(zonedDateTime);
         zonedDateTimeMock.when(() -> ZonedDateTime.now(Mockito.any(ZoneId.class))).thenReturn(zonedDateTime);
         zonedDateTimeMock.when(() -> ZonedDateTime.now(Mockito.any(Clock.class))).thenReturn(zonedDateTime);
         return new MockedStaticHolder(zonedDateTimeMock, instantMockedStatic);

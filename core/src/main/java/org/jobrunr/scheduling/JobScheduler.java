@@ -30,13 +30,11 @@ import java.util.stream.Stream;
 
 import static java.time.ZoneId.systemDefault;
 import static java.util.Collections.emptyList;
-import static org.jobrunr.storage.StorageProvider.BATCH_SIZE;
-import static org.jobrunr.utils.streams.StreamUtils.batchCollector;
 
 /**
  * Provides methods for creating fire-and-forget, delayed and recurring jobs as well as to delete existing background jobs.
  * <p>
- * This {@code JobScheduler} allows to schedule jobs by means of a Java 8 lambda which is analyzed.
+ * This {@code JobScheduler} allows to schedule jobs using a Java 8 lambda which is analyzed.
  *
  * @author Ronald Dehuysser
  */
@@ -69,31 +67,6 @@ public class JobScheduler extends AbstractJobScheduler {
             throw new IllegalArgumentException("A JobDetailsGenerator is required to use the JobScheduler.");
         this.jobDetailsGenerator = jobDetailsGenerator;
         BackgroundJob.setJobScheduler(this);
-    }
-
-
-    /**
-     * Creates a new {@link org.jobrunr.jobs.Job} using a {@link JobBuilder} that can be enqueued or scheduled and provides an alternative to the job annotation.
-     *
-     * @param jobBuilder the jobBuilder with all the details of the job
-     * @return the id of the job
-     */
-    @Override
-    public JobId create(JobBuilder jobBuilder) {
-        Job job = jobBuilder.build(jobDetailsGenerator);
-        return saveJob(job);
-    }
-
-    /**
-     * Creates a new {@link org.jobrunr.jobs.Job} for each {@link JobBuilder} and provides an alternative to the job annotation.
-     *
-     * @param jobBuilderStream the jobBuilders for which to create jobs.
-     */
-    @Override
-    public void create(Stream<JobBuilder> jobBuilderStream) {
-        jobBuilderStream
-                .map(jobBuilder -> jobBuilder.build(jobDetailsGenerator))
-                .collect(batchCollector(BATCH_SIZE, this::saveJobs));
     }
 
     /**
@@ -143,10 +116,7 @@ public class JobScheduler extends AbstractJobScheduler {
      * @param jobFromStream the {@link JobLambda} which defines the fire-and-forget job to create for each item in the {@code input}
      */
     public <T> void enqueue(Stream<T> input, JobLambdaFromStream<T> jobFromStream) {
-        input
-                .map(x -> jobDetailsGenerator.toJobDetails(x, jobFromStream))
-                .map(Job::new)
-                .collect(batchCollector(BATCH_SIZE, this::saveJobs));
+        saveJobsUsingStream(input, x -> new Job(jobDetailsGenerator.toJobDetails(x, jobFromStream)));
     }
 
     /**
@@ -193,10 +163,7 @@ public class JobScheduler extends AbstractJobScheduler {
      * @param iocJobFromStream the {@link JobLambda} which defines the fire-and-forget job to create for each item in the {@code input}
      */
     public <S, T> void enqueue(Stream<T> input, IocJobLambdaFromStream<S, T> iocJobFromStream) {
-        input
-                .map(x -> jobDetailsGenerator.toJobDetails(x, iocJobFromStream))
-                .map(Job::new)
-                .collect(batchCollector(BATCH_SIZE, this::saveJobs));
+        saveJobsUsingStream(input, x -> new Job(jobDetailsGenerator.toJobDetails(x, iocJobFromStream)));
     }
 
     /**
@@ -328,8 +295,8 @@ public class JobScheduler extends AbstractJobScheduler {
     }
 
     /**
-     * Creates a new or alters the existing {@link RecurringJob} based on the given {@link RecurringJobBuilder} (using id, cron expression and lambda).
-     * If no zoneId is set on the builder the jobs will be scheduled using the systemDefault timezone.
+     * Creates a new {@link RecurringJob} or alters the existing {@link RecurringJob} based on the given {@link RecurringJobBuilder} (using id, cron expression and lambda).
+     * If no zoneId is set on the builder, the jobs will be scheduled using the systemDefault timezone.
      * <h5>An example:</h5>
      *
      * <pre>{@code
@@ -432,7 +399,7 @@ public class JobScheduler extends AbstractJobScheduler {
      * }</pre>
      *
      * @param id     the id of this {@link RecurringJob} which can be used to alter or delete it
-     * @param cron   The cron expression defining when to run this recurring job(or any string representation of a schedule expression)
+     * @param cron   The cron expression defining when to run this recurring job (or any string representation of a schedule expression)
      * @param iocJob the lambda which defines the recurring job
      * @return the id of this {@link RecurringJob} which can be used to alter or delete it
      * @see org.jobrunr.scheduling.cron.Cron
@@ -524,7 +491,7 @@ public class JobScheduler extends AbstractJobScheduler {
     }
 
     /**
-     * Creates a new or alters the existing {@link RecurringJob} based on the given id, duration and lambda. The first run of this {@link RecurringJob} will happen after the given duration unless your duration is smaller or equal than your backgroundJobServer pollInterval.
+     * Creates a new {@link RecurringJob} or alters the existing {@link RecurringJob} based on the given id, duration and lambda. The first run of this {@link RecurringJob} will happen after the given duration unless your duration is smaller or equal than your backgroundJobServer pollInterval.
      * <h5>An example:</h5>
      * <pre>{@code
      *      MyService service = new MyService();
@@ -542,8 +509,9 @@ public class JobScheduler extends AbstractJobScheduler {
     }
 
     /**
-     * Creates a new or alters the existing {@link RecurringJob} based on the given id, duration and lambda. The IoC container will be used to resolve {@code MyService}. The first run of this {@link RecurringJob} will happen after the given duration unless your duration is smaller or equal than your backgroundJobServer pollInterval.
-     * (or any string representation of a schedule expression)     * <h5>An example:</h5>
+     * Creates a new {@link RecurringJob} or alters the existing {@link RecurringJob} based on the given id, duration and lambda. The IoC container will be used to resolve {@code MyService}. The first run of this {@link RecurringJob} will happen after the given duration unless your duration is smaller or equal than your backgroundJobServer pollInterval.
+     * (or any string representation of a schedule expression)
+     * <h5>An example:</h5>
      * <pre>{@code
      *      jobScheduler.<MyService>scheduleRecurrently("my-recurring-job", Duration.parse("P5D"), x -> x.doWork());
      * }</pre>
@@ -556,5 +524,10 @@ public class JobScheduler extends AbstractJobScheduler {
     public <S> String scheduleRecurrently(String id, Duration duration, IocJobLambda<S> iocJob) {
         JobDetails jobDetails = jobDetailsGenerator.toJobDetails(iocJob);
         return scheduleRecurrently(id, jobDetails, new Interval(duration), systemDefault());
+    }
+
+    @Override
+    protected Job buildJob(JobBuilder jobBuilder) {
+        return jobBuilder.build(jobDetailsGenerator);
     }
 }

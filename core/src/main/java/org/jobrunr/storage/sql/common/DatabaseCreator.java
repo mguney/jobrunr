@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -200,7 +201,7 @@ public class DatabaseCreator {
 
     protected void runMigrationStatement(Connection connection, SqlMigration migration) throws IOException, SQLException {
         final String sql = migration.getMigrationSql();
-        for (String statement : sql.split(";")) {
+        for (String statement : sql.split(";", 0)) {
             if (isNullEmptyOrBlank(statement)) continue;
 
             try (final Statement stmt = connection.createStatement()) {
@@ -303,7 +304,7 @@ public class DatabaseCreator {
         private final TablePrefixStatementUpdater tablePrefixStatementUpdater;
         private ScheduledExecutorService lockUpdateScheduler;
 
-        public MigrationsTableLocker(ConnectionProvider connectionProvider, TablePrefixStatementUpdater tablePrefixStatementUpdater) {
+        MigrationsTableLocker(ConnectionProvider connectionProvider, TablePrefixStatementUpdater tablePrefixStatementUpdater) {
             this.connectionProvider = connectionProvider;
             this.tablePrefixStatementUpdater = tablePrefixStatementUpdater;
         }
@@ -324,7 +325,8 @@ public class DatabaseCreator {
 
         private void startMigrationsTableLockUpdateTimer() {
             lockUpdateScheduler = Executors.newSingleThreadScheduledExecutor();
-            lockUpdateScheduler.scheduleAtFixedRate(this::updateMigrationsTableLock, 5, 5, TimeUnit.SECONDS);
+            // We do not want to cancel but just recurrently fire-and-forget
+            ScheduledFuture<?> unused = lockUpdateScheduler.scheduleAtFixedRate(this::updateMigrationsTableLock, 5, 5, TimeUnit.SECONDS);
         }
 
         private void removeMigrationsTableLock() {

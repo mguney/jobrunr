@@ -249,19 +249,18 @@ export const TopAppBarNotificationCenter = React.memo(() => {
         <IconButton
             edge="start"
             color="inherit"
-            size="large"
-            sx={{marginRight: 2}}
+            sx={{marginRight: 1.5}}
             onClick={openNotifications}
             ref={popperAnchorEl}
             id="notifications-center-button"
         >
-            <Badge badgeContent={amountOfUnreadNotifications} max={99} color="secondary" style={{textTransform: "uppercase"}}>
+            <Badge badgeContent={amountOfUnreadNotifications} max={99} color="secondary" sx={{fontSize: "10px"}}>
                 <Notifications/>
             </Badge>
         </IconButton>
         <ClickAwayPopper isOpen={isOpen} handleClickAway={closeNotifications} anchorEl={popperAnchorEl?.current}>
             <Paper elevation={6}>
-                <Box width="80vw" maxWidth={500} maxHeight="70vh" overflow="auto" id="notifications-center-container">
+                <Box maxWidth={500} maxHeight="70vh" overflow="auto" id="notifications-center-container">
                     <Box p={2}>
                         <Stack direction="row" spacing={1} justifyContent="space-between">
                             <Button
@@ -272,7 +271,7 @@ export const TopAppBarNotificationCenter = React.memo(() => {
                             >
                                 Mark all read
                             </Button>
-                            <Button variant="outlined" onClick={closeNotifications}>Close</Button>
+                            <Button variant="outlined" onClick={closeNotifications} autoFocus>Close</Button>
                         </Stack>
                     </Box>
                     {problemsWithReadStatus.length

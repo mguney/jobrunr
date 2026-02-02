@@ -1,9 +1,10 @@
 package org.jobrunr.scheduling;
 
 
+import org.jobrunr.jobs.Job;
 import org.jobrunr.jobs.JobDetailsTestBuilder;
-import org.jobrunr.jobs.JobId;
 import org.jobrunr.jobs.RecurringJob;
+import org.jobrunr.jobs.details.JobDetailsAsmGenerator;
 import org.jobrunr.jobs.mappers.JobMapper;
 import org.jobrunr.jobs.states.StateName;
 import org.jobrunr.scheduling.carbonaware.CarbonAwarePeriod;
@@ -20,9 +21,9 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.chrono.HijrahDate;
 import java.time.temporal.ChronoUnit;
-import java.util.stream.Stream;
 
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -53,7 +54,7 @@ class AbstractJobSchedulerTest {
 
             assertThatCode(() -> jobScheduler.schedule(null, Instant.now(), JobDetailsTestBuilder.defaultJobDetails().build())).doesNotThrowAnyException();
 
-            assertThatCode(() -> jobScheduler.schedule(null, HijrahDate.now(), JobDetailsTestBuilder.defaultJobDetails().build()))
+            assertThatCode(() -> jobScheduler.schedule(null, HijrahDate.now(ZoneId.systemDefault()), JobDetailsTestBuilder.defaultJobDetails().build()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("JobRunr does not support Temporal type: java.time.chrono.HijrahDate. Supported types are Instant, ChronoLocalDateTime (e.g., LocalDateTime), ChronoZonedDateTime (e.g., ZonedDateTime) and OffsetDateTime.");
 
@@ -103,14 +104,10 @@ class AbstractJobSchedulerTest {
         storageProvider.setJobMapper(new JobMapper(jsonMapper));
 
         return new AbstractJobScheduler(storageProvider, emptyList()) {
-            @Override
-            JobId create(JobBuilder jobBuilder) {
-                return null;
-            }
 
             @Override
-            void create(Stream<JobBuilder> jobBuilderStream) {
-
+            protected Job buildJob(JobBuilder jobBuilder) {
+                return jobBuilder.build(new JobDetailsAsmGenerator());
             }
 
             @Override

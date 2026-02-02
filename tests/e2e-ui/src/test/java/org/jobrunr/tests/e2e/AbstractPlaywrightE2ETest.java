@@ -77,6 +77,10 @@ public class AbstractPlaywrightE2ETest {
         return page.locator("#scheduled-menu-btn");
     }
 
+    protected Locator carbonIntensityChart() {
+        return page.locator(".carbon-intensity-chart");
+    }
+
     protected Locator enqueuedMenuBtn() {
         return page.locator("#enqueued-menu-btn");
     }
@@ -118,15 +122,19 @@ public class AbstractPlaywrightE2ETest {
     }
 
     protected Locator jobsTablePaginationPrevButton() {
-        return jobsTablePagination().locator("button").all().get(0);
+        return jobsTablePagination().locator("button:first-of-type");
     }
 
     protected Locator jobsTablePaginationNextButton() {
-        return jobsTablePagination().locator("button").all().get(1);
+        return jobsTablePagination().locator("button:last-of-type");
     }
 
     protected Locator jobTableRows() {
         return jobTable().locator("tbody>tr");
+    }
+
+    protected void jobTableRowsClickOnFirstJob() {
+        jobTableRows().first().locator("td a").first().click();
     }
 
     protected Locator noJobsFoundMessage() {

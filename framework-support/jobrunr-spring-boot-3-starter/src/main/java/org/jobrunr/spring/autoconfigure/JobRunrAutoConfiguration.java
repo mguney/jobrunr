@@ -1,14 +1,10 @@
 package org.jobrunr.spring.autoconfigure;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
-import jakarta.json.bind.Jsonb;
 import org.jobrunr.dashboard.JobRunrDashboardWebServer;
 import org.jobrunr.dashboard.JobRunrDashboardWebServerConfiguration;
 import org.jobrunr.jobs.details.JobDetailsGenerator;
 import org.jobrunr.jobs.filters.RetryFilter;
 import org.jobrunr.jobs.mappers.JobMapper;
-import org.jobrunr.kotlin.utils.mapper.KotlinxSerializationJsonMapper;
 import org.jobrunr.scheduling.AsyncJobPostProcessor;
 import org.jobrunr.scheduling.JobRequestScheduler;
 import org.jobrunr.scheduling.JobScheduler;
@@ -24,9 +20,9 @@ import org.jobrunr.server.configuration.DefaultBackgroundJobServerWorkerPolicy;
 import org.jobrunr.spring.autoconfigure.health.JobRunrHealthIndicator;
 import org.jobrunr.storage.StorageProvider;
 import org.jobrunr.utils.mapper.JsonMapper;
-import org.jobrunr.utils.mapper.gson.GsonJsonMapper;
-import org.jobrunr.utils.mapper.jackson.JacksonJsonMapper;
-import org.jobrunr.utils.mapper.jsonb.JsonbJsonMapper;
+import org.jobrunr.utils.mapper.JsonMapperFactory;
+import org.jobrunr.utils.reflection.ReflectionUtils;
+import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.beans.factory.BeanCreationNotAllowedException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.autoconfigure.health.ConditionalOnEnabledHealthIndicator;
@@ -36,13 +32,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnResource;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.context.properties.PropertyMapper;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.ClassUtils;
 
 import java.util.Optional;
 
@@ -51,7 +47,6 @@ import static java.util.Collections.singletonList;
 import static java.util.Optional.ofNullable;
 import static org.jobrunr.dashboard.JobRunrDashboardWebServerConfiguration.usingStandardDashboardConfiguration;
 import static org.jobrunr.server.BackgroundJobServerConfiguration.usingStandardBackgroundJobServerConfiguration;
-import static org.jobrunr.utils.reflection.ReflectionUtils.newInstance;
 
 /**
  * A Spring Boot AutoConfiguration class for JobRunr
@@ -71,7 +66,7 @@ public class JobRunrAutoConfiguration {
     @ConditionalOnMissingBean
     @ConditionalOnProperty(prefix = "jobrunr.job-scheduler", name = "enabled", havingValue = "true", matchIfMissing = true)
     public JobScheduler jobScheduler(StorageProvider storageProvider, JobRunrProperties properties) {
-        final JobDetailsGenerator jobDetailsGenerator = newInstance(properties.getJobScheduler().getJobDetailsGenerator());
+        final JobDetailsGenerator jobDetailsGenerator = ReflectionUtils.newInstance(properties.getJobScheduler().getJobDetailsGenerator());
         return new JobScheduler(storageProvider, jobDetailsGenerator, emptyList());
     }
 
@@ -131,6 +126,7 @@ public class JobRunrAutoConfiguration {
         map.from(carbonAwareJobProcessingProperties::getExternalIdentifier).whenNonNull().to(carbonAwareJobProcessingConfiguration::andExternalIdentifier);
         map.from(carbonAwareJobProcessingProperties::getApiClientConnectTimeout).whenNonNull().to(carbonAwareJobProcessingConfiguration::andApiClientConnectTimeout);
         map.from(carbonAwareJobProcessingProperties::getApiClientReadTimeout).whenNonNull().to(carbonAwareJobProcessingConfiguration::andApiClientReadTimeout);
+        map.from(carbonAwareJobProcessingProperties::getPollIntervalInMinutes).to(carbonAwareJobProcessingConfiguration::andPollIntervalInMinutes);
         backgroundJobServerConfiguration.andCarbonAwareJobProcessingConfiguration(carbonAwareJobProcessingConfiguration);
 
         return backgroundJobServerConfiguration;
@@ -187,47 +183,17 @@ public class JobRunrAutoConfiguration {
     }
 
     @Configuration
-    @ConditionalOnClass(Gson.class)
-    public static class JobRunrGsonAutoConfiguration {
+    public static class JobRunrJsonMapperAutoConfiguration implements BeanClassLoaderAware {
 
-        @Bean(name = "jobRunrJsonMapper")
-        @ConditionalOnMissingBean
-        public JsonMapper gsonJsonMapper() {
-            return new GsonJsonMapper();
+        @Override
+        public void setBeanClassLoader(ClassLoader classLoader) {
+            JsonMapperFactory.setJsonMapperClassPresentFunction(s -> ClassUtils.isPresent(s, classLoader));
         }
-    }
-
-    @Configuration
-    @ConditionalOnClass(ObjectMapper.class)
-    public static class JobRunrJacksonAutoConfiguration {
 
         @Bean(name = "jobRunrJsonMapper")
         @ConditionalOnMissingBean
-        public JsonMapper jacksonJsonMapper() {
-            return new JacksonJsonMapper();
-        }
-    }
-
-    @Configuration
-    @ConditionalOnClass(value = {kotlinx.serialization.json.Json.class, KotlinxSerializationJsonMapper.class})
-    public static class JobRunrKotlinxSerializationAutoConfiguration {
-
-        @Bean(name = "jobRunrJsonMapper")
-        @ConditionalOnMissingBean
-        public JsonMapper kotlinxSerializationJsonMapper() {
-            return new KotlinxSerializationJsonMapper();
-        }
-    }
-
-    @ConditionalOnClass(Jsonb.class)
-    @ConditionalOnResource(resources = {"classpath:META-INF/services/javax.json.bind.spi.JsonbProvider",
-            "classpath:META-INF/services/javax.json.spi.JsonProvider"})
-    public static class JobRunrJsonbAutoConfiguration {
-
-        @Bean(name = "jobRunrJsonMapper")
-        @ConditionalOnMissingBean
-        public JsonMapper jsonbJsonMapper() {
-            return new JsonbJsonMapper();
+        public JsonMapper jobRunrJsonMapper() {
+            return JsonMapperFactory.createJsonMapper();
         }
     }
 

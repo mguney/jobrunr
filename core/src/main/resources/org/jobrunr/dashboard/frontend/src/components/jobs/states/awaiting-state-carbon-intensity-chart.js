@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {useDateStyles} from "../../utils/date-styles";
+import {dateStyles, useDateStyles} from "../../../hooks/useDateStyles.js";
 import {extractDateFromISOString, extractTimeFromDate, formatTime, SwitchableTimeFormatter} from "../../utils/time-ago";
 
 // interpolate from green (120°) to red (0°) in HSL space
@@ -16,8 +16,8 @@ function isInTimeRange(idx, [from, to]) {
 }
 
 const CarbonIntensityChart = ({job, jobState}) => {
-    const style = useDateStyles();
-    const useUTC = style === 'iso8601Style';
+    const [style, _] = useDateStyles();
+    const useUTC = style === dateStyles.iso8601Style;
 
     const scheduledState = useMemo(
         () => job.jobHistory.find(js => js.state === 'SCHEDULED'),
@@ -151,7 +151,7 @@ const CarbonIntensityChart = ({job, jobState}) => {
     if (!scheduledState) return <div/>;
 
     return (
-        <div style={{width: '100%', marginTop: '32px'}}>
+        <div style={{width: '100%', marginTop: '32px'}} className={"carbon-intensity-chart"}>
             <div
                 style={{
                     display: 'grid',
@@ -171,6 +171,7 @@ const CarbonIntensityChart = ({job, jobState}) => {
                         <React.Fragment key={slot}>
                             <div style={{background: inWindow ? 'transparent' : '#E53935'}}/>
                             <div
+                                className={isBest ? "carbon-intensity-chart-block-best" : "carbon-intensity-chart-block"}
                                 style={{
                                     background: color,
                                     opacity: inWindow ? 1 : 0.6,
@@ -181,7 +182,9 @@ const CarbonIntensityChart = ({job, jobState}) => {
                                     height: '100%',
                                     position: 'relative',
                                 }}
-                                title={`Time ${slot} — ${rank !== null ? `Intensity: ${rank} (0 = best)` : 'no data'}`}
+                                title={isBest ?
+                                    `${slot}: Optimal execution window — Intensity: ${rank}` :
+                                    `Time ${slot} — ${rank !== null ? `Intensity: ${rank} (0 = best)` : 'no data'}`}
                             >
                                 {isBest && (
                                     <div
@@ -203,7 +206,6 @@ const CarbonIntensityChart = ({job, jobState}) => {
                                 textAlign: slot === '00:00' ? 'left' : 'center',
                                 justifySelf: slot === '00:00' ? 'start' : 'center',
                                 fontSize: '12px',
-                                color: '#333'
                             }}>
                                 {slot.endsWith(':00') ? slot : ''}
                             </div>
@@ -216,7 +218,6 @@ const CarbonIntensityChart = ({job, jobState}) => {
                 display: 'flex',
                 justifyContent: 'space-between',
                 marginTop: '4px',
-                color: '#333'
             }}>
                 <div style={{fontSize: '12px', lineHeight: 1, alignSelf: 'start', marginTop: '4px'}}>▲&nbsp;
                     <span>{visualizeDate}</span>

@@ -37,6 +37,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -63,6 +64,7 @@ import static org.awaitility.Durations.TEN_SECONDS;
 import static org.awaitility.Durations.TWO_SECONDS;
 import static org.jobrunr.JobRunrAssertions.assertThat;
 import static org.jobrunr.jobs.JobDetailsTestBuilder.classThatDoesNotExistJobDetails;
+import static org.jobrunr.jobs.JobDetailsTestBuilder.jobParameterThatDoesNotExistJobDetails;
 import static org.jobrunr.jobs.JobDetailsTestBuilder.methodThatDoesNotExistJobDetails;
 import static org.jobrunr.jobs.JobTestBuilder.anEnqueuedJob;
 import static org.jobrunr.jobs.states.StateName.AWAITING;
@@ -306,7 +308,7 @@ public class BackgroundJobByJobLambdaTest {
 
     @Test
     void testScheduleWithZonedDateTime() {
-        JobId jobId = BackgroundJob.schedule(ZonedDateTime.now().plus(ofMillis(1500)), () -> testService.doWork());
+        JobId jobId = BackgroundJob.schedule(ZonedDateTime.now(ZoneId.systemDefault()).plus(ofMillis(1500)), () -> testService.doWork());
         await().during(ONE_SECOND).until(() -> storageProvider.getJobById(jobId).getState() == SCHEDULED);
         await().atMost(FIVE_SECONDS).until(() -> storageProvider.getJobById(jobId).getState() == SUCCEEDED);
         assertThat(storageProvider.getJobById(jobId)).hasStates(SCHEDULED, ENQUEUED, PROCESSING, SUCCEEDED);
@@ -314,7 +316,7 @@ public class BackgroundJobByJobLambdaTest {
 
     @Test
     void testScheduleWithOffsetDateTime() {
-        JobId jobId = BackgroundJob.schedule(OffsetDateTime.now().plus(ofMillis(1500)), () -> testService.doWork());
+        JobId jobId = BackgroundJob.schedule(OffsetDateTime.now(ZoneId.systemDefault()).plus(ofMillis(1500)), () -> testService.doWork());
         await().during(ONE_SECOND).until(() -> storageProvider.getJobById(jobId).getState() == SCHEDULED);
         await().atMost(FIVE_SECONDS).until(() -> storageProvider.getJobById(jobId).getState() == SUCCEEDED);
         assertThat(storageProvider.getJobById(jobId)).hasStates(SCHEDULED, ENQUEUED, PROCESSING, SUCCEEDED);
@@ -322,7 +324,7 @@ public class BackgroundJobByJobLambdaTest {
 
     @Test
     void testScheduleWithLocalDateTime() {
-        JobId jobId = BackgroundJob.schedule(LocalDateTime.now().plus(ofMillis(1500)), () -> testService.doWork());
+        JobId jobId = BackgroundJob.schedule(LocalDateTime.now(ZoneId.systemDefault()).plus(ofMillis(1500)), () -> testService.doWork());
         await().during(ONE_SECOND).until(() -> storageProvider.getJobById(jobId).getState() == SCHEDULED);
         await().atMost(FIVE_SECONDS).until(() -> storageProvider.getJobById(jobId).getState() == SUCCEEDED);
         assertThat(storageProvider.getJobById(jobId)).hasStates(SCHEDULED, ENQUEUED, PROCESSING, SUCCEEDED);
@@ -637,9 +639,8 @@ public class BackgroundJobByJobLambdaTest {
     void jobToClassThatDoesNotExistGoesToFailedState() {
         Job job = storageProvider.save(anEnqueuedJob().withJobDetails(classThatDoesNotExistJobDetails()).build());
         await().atMost(3, SECONDS).until(() -> storageProvider.getJobById(job.getId()).hasState(FAILED));
-        FailedState failedState = storageProvider.getJobById(job.getId()).getJobState();
-        assertThat(failedState.getException()).isInstanceOf(JobClassNotFoundException.class);
         Job failedJob = storageProvider.getJobById(job.getId());
+        assertThat(((FailedState) failedJob.getJobState()).getException()).isInstanceOf(JobClassNotFoundException.class);
         assertThat(failedJob).hasStates(ENQUEUED, PROCESSING, FAILED);
     }
 
@@ -647,10 +648,19 @@ public class BackgroundJobByJobLambdaTest {
     void jobToMethodThatDoesNotExistGoesToFailedState() {
         Job job = storageProvider.save(anEnqueuedJob().withJobDetails(methodThatDoesNotExistJobDetails()).build());
         await().atMost(30, SECONDS).until(() -> storageProvider.getJobById(job.getId()).hasState(FAILED));
-        FailedState failedState = storageProvider.getJobById(job.getId()).getJobState();
-        assertThat(failedState.getException()).isInstanceOf(JobMethodNotFoundException.class);
-        await().during(1, SECONDS).until(() -> storageProvider.getJobById(job.getId()).hasState(FAILED));
         Job failedJob = storageProvider.getJobById(job.getId());
+        assertThat(((FailedState) failedJob.getJobState()).getException()).isInstanceOf(JobMethodNotFoundException.class);
+        assertThat(failedJob).hasStates(ENQUEUED, PROCESSING, FAILED);
+    }
+
+    @Test
+    void jobToParameterThatDoesNotExistGoesToFailedState() {
+        Job job = storageProvider.save(anEnqueuedJob().withJobDetails(jobParameterThatDoesNotExistJobDetails()).build());
+        await().atMost(30, SECONDS).until(() -> storageProvider.getJobById(job.getId()).hasState(FAILED));
+        Job failedJob = storageProvider.getJobById(job.getId());
+        assertThat(((FailedState) failedJob.getJobState()).getException())
+                .isInstanceOf(JobMethodNotFoundException.class)
+                .hasMessageContaining("JobParameterNotDeserializableException: one of the JobParameters of type");
         assertThat(failedJob).hasStates(ENQUEUED, PROCESSING, FAILED);
     }
 

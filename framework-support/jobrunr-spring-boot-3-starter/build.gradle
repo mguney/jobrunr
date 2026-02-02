@@ -7,20 +7,17 @@ plugins {
 }
 
 compileJava {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
     options.release = 17
 }
 
 compileTestJava {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    options.release = 17
 }
 
 dependencies {
     api platform(project(':platform'))
-    api platform('org.springframework.boot:spring-boot-dependencies:3.5.0')
-    annotationProcessor platform('org.springframework.boot:spring-boot-dependencies:3.5.0')
+    api platform('org.springframework.boot:spring-boot-dependencies:3.5.9')
+    annotationProcessor platform('org.springframework.boot:spring-boot-dependencies:3.5.9')
 
     api project(':core')
     api 'org.springframework.boot:spring-boot-starter'
@@ -29,10 +26,7 @@ dependencies {
 
     compileOnly 'org.springframework.boot:spring-boot-starter-actuator'
     compileOnly 'io.micrometer:micrometer-core'
-    compileOnly 'com.fasterxml.jackson.core:jackson-databind'
-    compileOnly 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
-    compileOnly 'com.google.code.gson:gson'
-    compileOnly 'org.eclipse:yasson'
+    compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
     compileOnly 'org.jetbrains.kotlinx:kotlinx-serialization-json'
     compileOnly project(':language-support:jobrunr-kotlin-22-support')
 
@@ -86,7 +80,7 @@ publishing {
             from components.java
 
             pom {
-                name = 'JobRunr Spring Boot Native'
+                name = 'JobRunr Spring Boot 3 Starter'
                 description = 'An easy way to perform background processing on the JVM. Backed by persistent storage. Open and free for commercial use.'
                 url = 'https://github.com/jobrunr/jobrunr'
                 licenses {

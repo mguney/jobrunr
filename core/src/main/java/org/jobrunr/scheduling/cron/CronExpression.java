@@ -11,6 +11,8 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.BitSet;
 
+import static org.jobrunr.utils.LocalDateUtils.nowUsingSystemDefault;
+
 /**
  * Schedule class represents a parsed crontab expression.
  * <p>
@@ -96,7 +98,7 @@ public class CronExpression extends Schedule {
         if (getExpression().isEmpty()) {
             throw new InvalidCronExpressionException("Empty cron expression");
         }
-        String[] fields = getExpression().trim().toLowerCase().split("\\s+");
+        String[] fields = getExpression().trim().toLowerCase().split("\\s+", 0);
         int count = fields.length;
         if (count > 6 || count < 5) {
             throw new InvalidCronExpressionException(
@@ -150,7 +152,7 @@ public class CronExpression extends Schedule {
         if (!this.canScheduleActuallyOccur())
             throw new InvalidCronExpressionException("Cron expression not valid. The specified months do not have the day 30th or the day 31st");
     }
-    
+
     /**
      * Calculates the next occurrence based on provided base time.
      *
@@ -287,7 +289,7 @@ public class CronExpression extends Schedule {
         if (this.daysAndDaysOfWeekRelation == DaysAndDaysOfWeekRelation.UNION || this.days.nextSetBit(0) < 29)
             return true;
 
-        int aYear = LocalDateTime.now().getYear();
+        int aYear = nowUsingSystemDefault().getYear();
         for (int dayIndex = 29; dayIndex < 31; dayIndex++) {
             if (!this.days.get(dayIndex))
                 continue;

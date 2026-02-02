@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 import static java.lang.Boolean.TRUE;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
-import static java.util.Collections.emptyList;
 import static org.jobrunr.JobRunrException.shouldNotHappenException;
 
 public class CachingJobDetailsGenerator implements JobDetailsGenerator {
@@ -80,28 +79,28 @@ public class CachingJobDetailsGenerator implements JobDetailsGenerator {
             this.jobDetailsGeneratorDelegate = jobDetailsGeneratorDelegate;
         }
 
-        public JobDetails getJobDetails(JobLambda lambda) {
+        JobDetails getJobDetails(JobLambda lambda) {
             return initOrGetJobDetails(
                     () -> jobDetailsGeneratorDelegate.toJobDetails(lambda),
                     () -> initJobParameterRetrievers(jobDetails, lambda, Optional.empty()),
                     () -> getCachedJobDetails(lambda, Optional.empty()));
         }
 
-        public JobDetails getJobDetails(IocJobLambda<?> lambda) {
+        JobDetails getJobDetails(IocJobLambda<?> lambda) {
             return initOrGetJobDetails(
                     () -> jobDetailsGeneratorDelegate.toJobDetails(lambda),
                     () -> initJobParameterRetrievers(jobDetails, lambda, Optional.empty()),
                     () -> getCachedJobDetails(lambda, Optional.empty()));
         }
 
-        public <T> JobDetails getJobDetails(T itemFromStream, JobLambdaFromStream<T> lambda) {
+        <T> JobDetails getJobDetails(T itemFromStream, JobLambdaFromStream<T> lambda) {
             return initOrGetJobDetails(
                     () -> jobDetailsGeneratorDelegate.toJobDetails(itemFromStream, lambda),
                     () -> initJobParameterRetrievers(jobDetails, lambda, Optional.of(itemFromStream)),
                     () -> getCachedJobDetails(lambda, Optional.of(itemFromStream)));
         }
 
-        public <S, T> JobDetails getJobDetails(T itemFromStream, IocJobLambdaFromStream<S, T> lambda) {
+        <S, T> JobDetails getJobDetails(T itemFromStream, IocJobLambdaFromStream<S, T> lambda) {
             return initOrGetJobDetails(
                     () -> jobDetailsGeneratorDelegate.toJobDetails(itemFromStream, lambda),
                     () -> initJobParameterRetrievers(jobDetails, lambda, Optional.of(itemFromStream)),
@@ -160,7 +159,7 @@ public class CachingJobDetailsGenerator implements JobDetailsGenerator {
                 return parameterRetrievers;
             } catch (Exception e) {
                 jobDetails.setCacheable(false);
-                return emptyList();
+                return new ArrayList<>();
             }
         }
 
@@ -223,7 +222,7 @@ public class CachingJobDetailsGenerator implements JobDetailsGenerator {
 
         private final JobParameter jobParameter;
 
-        public FixedJobParameterRetriever(JobParameter jobParameter) {
+        FixedJobParameterRetriever(JobParameter jobParameter) {
             this.jobParameter = jobParameter;
         }
 
@@ -238,7 +237,7 @@ public class CachingJobDetailsGenerator implements JobDetailsGenerator {
         private final String jobParameterClassName;
         private final MethodHandle methodHandle;
 
-        public MethodHandleJobParameterRetriever(JobParameter jobParameter, MethodHandle methodHandle) {
+        MethodHandleJobParameterRetriever(JobParameter jobParameter, MethodHandle methodHandle) {
             this.jobParameterClassName = jobParameter.getClassName();
             this.methodHandle = methodHandle;
         }
@@ -258,7 +257,7 @@ public class CachingJobDetailsGenerator implements JobDetailsGenerator {
 
         private final String jobParameterClassName;
 
-        public ItemFromStreamJobParameterRetriever(JobParameter jobParameter) {
+        ItemFromStreamJobParameterRetriever(JobParameter jobParameter) {
             this.jobParameterClassName = jobParameter.getClassName();
         }
 

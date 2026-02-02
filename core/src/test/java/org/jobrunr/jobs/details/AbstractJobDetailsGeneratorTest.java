@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,6 +46,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.data.Index.atIndex;
 import static org.awaitility.Awaitility.await;
 import static org.jobrunr.JobRunrAssertions.assertThat;
 import static org.jobrunr.jobs.details.JobDetailsGeneratorUtils.toFQResource;
@@ -513,7 +515,7 @@ public abstract class AbstractJobDetailsGeneratorTest {
     @Test
     void testJobLambdaCallingMultiLineStatementSystemOutPrintln() {
         final List<UUID> workStream = getWorkStream().collect(toList());
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         for (UUID id : workStream) {
             JobLambda job = () -> {
                 UUID testId = id;
@@ -572,13 +574,17 @@ public abstract class AbstractJobDetailsGeneratorTest {
     }
 
     @Test
-    void testJobLambdaWhichReturnsSomething() {
+    void testJobLambdaWithInheritedParameterWhichReturnsSomething() {
         JobLambda jobLambda = () -> testService.doWorkAndReturnResult("someString");
         JobDetails jobDetails = toJobDetails(jobLambda);
         assertThat(jobDetails)
                 .hasClass(TestService.class)
                 .hasMethodName("doWorkAndReturnResult")
-                .hasArgs("someString");
+                .hasArg(x -> assertThat(x)
+                                .hasFieldOrPropertyWithValue("className", CharSequence.class.getName())
+                                .hasFieldOrPropertyWithValue("actualClassName", String.class.getName())
+                                .hasFieldOrPropertyWithValue("object", "someString")
+                        , atIndex(0));
     }
 
     @Test

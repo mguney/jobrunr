@@ -30,8 +30,8 @@ public class ForAllSubclassesExtension implements BeforeAllCallback, AfterAllCal
         if (atomicInteger != null) return;
 
         annotatedTestClass = findClassWithForAllSubclassesAnnotation(context);
-        setUpMethod = findMethodWithAnnotation(annotatedTestClass, BeforeAllSubclasses.class);
-        tearDownMethod = findMethodWithAnnotation(annotatedTestClass, AfterAllSubclasses.class);
+        setUpMethod = findMethodWithAnnotation(BeforeAllSubclasses.class);
+        tearDownMethod = findMethodWithAnnotation(AfterAllSubclasses.class);
 
         try (ClassPathResourceProvider resourceProvider = new ClassPathResourceProvider()) {
             final List<Path> paths = resourceProvider.listAllChildrenOnClasspath(annotatedTestClass).collect(toList());
@@ -61,23 +61,23 @@ public class ForAllSubclassesExtension implements BeforeAllCallback, AfterAllCal
         }
     }
 
-    private static Class findClassWithForAllSubclassesAnnotation(ExtensionContext extensionContext) {
+    private static Class<?> findClassWithForAllSubclassesAnnotation(ExtensionContext extensionContext) {
         return findClassWithForAllSubclassesAnnotation(extensionContext.getRequiredTestClass());
     }
 
-    private static Class findClassWithForAllSubclassesAnnotation(Class clazz) {
+    private static Class<?> findClassWithForAllSubclassesAnnotation(Class<?> clazz) {
         if (clazz == null) {
             throw new IllegalStateException("Could not find class with CleanupAfterSubclassesExtension");
         }
 
-        final ExtendWith declaredAnnotation = (ExtendWith) clazz.getDeclaredAnnotation(ExtendWith.class);
+        final ExtendWith declaredAnnotation = clazz.getDeclaredAnnotation(ExtendWith.class);
         if (declaredAnnotation != null && Arrays.asList(declaredAnnotation.value()).contains(ForAllSubclassesExtension.class)) {
             return clazz;
         }
         return findClassWithForAllSubclassesAnnotation(clazz.getSuperclass());
     }
 
-    private static Method findMethodWithAnnotation(Class clazz, Class<? extends Annotation> annotation) {
+    private static Method findMethodWithAnnotation(Class<? extends Annotation> annotation) {
         return Arrays.stream(annotatedTestClass.getDeclaredMethods())
                 .filter(method -> method.isAnnotationPresent(annotation))
                 .findFirst()

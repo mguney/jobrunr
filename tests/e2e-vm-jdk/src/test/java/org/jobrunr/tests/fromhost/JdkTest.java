@@ -48,24 +48,19 @@ class JdkTest {
     }
 
     @Test
-    void jdk24OpenJDK() {
-        assertThat(buildAndTestOnImage("openjdk:24", "68.0"))
+    void jdk25OpenJDK() {
+        assertThat(buildAndTestOnImage("openjdk:25", "69.0"))
                 .contains("BUILD SUCCESS")
                 .contains("ThreadManager of type 'VirtualThreadPerTask' started");
     }
 
     private String buildAndTestOnImage(String dockerfile, String javaClassVersion) {
         final MavenBuildAndTestContainer buildAndTestContainer = new MavenBuildAndTestContainer(dockerfile);
-        try {
-            buildAndTestContainer
-                    .withImagePullPolicy(PullPolicy.ageBased(Duration.ofDays(14)))
-                    .withEnv("JAVA_CLASS_VERSION", javaClassVersion)
-                    .withStartupTimeout(Duration.ofMinutes(2))
-                    .start();
-        } finally {
-            String logs = buildAndTestContainer.getLogs();
-            //System.out.println(logs);
-            return logs;
-        }
+        buildAndTestContainer
+                .withImagePullPolicy(PullPolicy.ageBased(Duration.ofDays(14)))
+                .withEnv("JAVA_CLASS_VERSION", javaClassVersion)
+                .withStartupTimeout(Duration.ofMinutes(2))
+                .start();
+        return buildAndTestContainer.getLogs();
     }
 }

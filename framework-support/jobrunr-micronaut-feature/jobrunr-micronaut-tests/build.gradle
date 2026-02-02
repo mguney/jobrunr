@@ -1,9 +1,9 @@
 plugins {
-    id("io.micronaut.application") version "4.5.3"
+    id 'io.micronaut.application' version '4.6.1'
 }
 
 micronaut {
-    version '4.8.2'
+    version '4.10.6'
     runtime("netty")
     testRuntime("junit5")
 }
@@ -25,14 +25,10 @@ dependencies {
 }
 
 compileJava {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
     options.release = 17
 }
 
 compileTestJava {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
     options.release = 17
 }
 

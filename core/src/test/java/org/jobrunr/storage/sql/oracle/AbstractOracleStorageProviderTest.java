@@ -43,7 +43,7 @@ public abstract class AbstractOracleStorageProviderTest extends SqlStorageProvid
             System.out.println(sqlContainer.getLogs());
             System.out.println("==========================================================================================");
 
-            dataSource = toHikariDataSource(sqlContainer.getJdbcUrl().replace("xepdb1", "FREEPDB1"), sqlContainer.getUsername(), sqlContainer.getPassword());
+            dataSource = toHikariDataSource(sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword());
         }
 
         return dataSource;
@@ -62,10 +62,7 @@ public abstract class AbstractOracleStorageProviderTest extends SqlStorageProvid
 
     @Override
     protected DatabaseCleaner getDatabaseCleaner(DataSource dataSource) {
-        return new DatabaseCleaner(dataSource, this::canIgnoreException);
+        return new DatabaseCleaner(dataSource);
     }
 
-    private boolean canIgnoreException(Exception e) {
-        return e.getMessage().contains("ORA-00942");
-    }
 }

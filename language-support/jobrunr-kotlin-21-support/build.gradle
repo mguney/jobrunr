@@ -1,5 +1,8 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
-    id 'com.github.ben-manes.versions' version '0.52.0'
+    id 'com.github.ben-manes.versions' version '0.53.0'
     id 'java-library'
     id 'maven-publish'
     id 'signing'
@@ -11,6 +14,7 @@ dependencies {
     api project(':core')
     compileOnly 'io.insert-koin:koin-core'
     compileOnly 'org.jetbrains.kotlinx:kotlinx-serialization-json'
+    compileOnly 'org.jetbrains.kotlin:kotlin-reflect'
 
     testImplementation project(':core')
     testImplementation testFixtures(project(":core"))
@@ -27,6 +31,58 @@ dependencyUpdates {
         it.candidate.group.startsWith('org.jetbrains.kotlin') && !it.candidate.version.startsWith('2.1')
     }
 }
+
+compileJava {
+    options.release = 8
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_1_8
+    }
+}
+
+tasks.named('compileTestKotlin', KotlinCompile) {
+    compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
+}
+
+// Following is to compile a select number of tests with the `-Xsam-conversions=class` compilation flag.
+// This is to tests that JobRunr supports Kotlin lambdas even with class-based SAM conversions.
+sourceSets {
+    testClassLambdas {
+        java.srcDirs = []
+        kotlin.srcDirs = ['src/test/kotlin/org/jobrunr/scheduling', 'src/test/kotlin/org/jobrunr/jobs/details']
+        resources.srcDirs = ['src/test/resources']
+        compileClasspath += sourceSets.main.output + sourceSets.test.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.test.runtimeClasspath
+    }
+}
+
+compileTestClassLambdasJava {
+    enabled = false
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+// Sets the compilation flags for the `testClassLambdas` source set
+tasks.named('compileTestClassLambdasKotlin', KotlinCompile) {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_21
+        freeCompilerArgs.addAll('-Xlambdas=class', '-Xsam-conversions=class')
+    }
+}
+
+tasks.register('testWithClassLambdas', Test) {
+    description = 'Runs tests compiled with -Xlambdas=class -Xsam-conversions=class'
+    group = 'verification'
+
+    testClassesDirs = sourceSets.testClassLambdas.output.classesDirs
+    classpath = sourceSets.testClassLambdas.runtimeClasspath
+    shouldRunAfter test
+}
+
+// Important otherwise the test is not going to run
+check.dependsOn testWithClassLambdas
+
 java {
     withJavadocJar()
     withSourcesJar()
@@ -37,14 +93,6 @@ normalization {
         ignore '**/MANIFEST.MF'
         ignore '**/frontend/**'
     }
-}
-
-compileKotlin {
-    kotlinOptions.jvmTarget = "1.8"
-}
-
-compileTestKotlin {
-    kotlinOptions.jvmTarget = "11"
 }
 
 publishing {
@@ -91,10 +139,10 @@ publishing {
                 withXml {
                     def pomNode = asNode()
                     pomNode.remove(pomNode.dependencyManagement)
-                    pomNode.dependencies.'*'.findAll() {
-                        it.optional.text() == 'true'
-                    }.each() {
-                        it.parent().remove(it)
+                    pomNode.dependencies.'*'.each() {
+                        if (it.optional.text() == 'true') {
+                            it.parent().remove(it)
+                        }
                     }
                 }
             }

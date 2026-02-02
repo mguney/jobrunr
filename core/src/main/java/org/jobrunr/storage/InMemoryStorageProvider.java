@@ -12,7 +12,6 @@ import org.jobrunr.jobs.states.StateName;
 import org.jobrunr.storage.StorageProviderUtils.DatabaseOptions;
 import org.jobrunr.storage.navigation.AmountRequest;
 import org.jobrunr.storage.navigation.OffsetBasedPageRequest;
-import org.jobrunr.storage.navigation.OrderTerm;
 import org.jobrunr.utils.resilience.RateLimiter;
 
 import java.time.Instant;
@@ -137,7 +136,7 @@ public class InMemoryStorageProvider extends AbstractStorageProvider {
                 .filter(entry -> entry.getValue().getLastHeartbeat().isBefore(heartbeatOlderThan))
                 .map(Map.Entry::getKey)
                 .collect(toList());
-        backgroundJobServers.keySet().removeAll(serversToRemove);
+        serversToRemove.forEach(backgroundJobServers::remove);
         return serversToRemove.size();
     }
 
@@ -217,7 +216,7 @@ public class InMemoryStorageProvider extends AbstractStorageProvider {
                 .map(JobRunrMetadata::getId)
                 .collect(toList());
         if (!metadataToRemove.isEmpty()) {
-            this.metadata.keySet().removeAll(metadataToRemove);
+            metadataToRemove.forEach(this.metadata::remove);
             notifyMetadataChangeListeners();
         }
     }
@@ -239,9 +238,9 @@ public class InMemoryStorageProvider extends AbstractStorageProvider {
 
     @Override
     public int deletePermanently(UUID id) {
-        boolean removed = jobQueue.keySet().remove(id);
-        notifyJobStatsOnChangeListenersIf(removed);
-        return removed ? 1 : 0;
+        Job removedJob = jobQueue.remove(id);
+        notifyJobStatsOnChangeListenersIf(removedJob != null);
+        return removedJob != null ? 1 : 0;
     }
 
     @Override
@@ -261,7 +260,7 @@ public class InMemoryStorageProvider extends AbstractStorageProvider {
                 .filter(job -> job.getUpdatedAt().isBefore(updatedBefore))
                 .map(Job::getId)
                 .collect(toList());
-        jobQueue.keySet().removeAll(jobsToRemove);
+        jobsToRemove.forEach(jobQueue::remove);
         notifyJobStatsOnChangeListenersIf(!jobsToRemove.isEmpty());
         return jobsToRemove.size();
     }
@@ -344,7 +343,7 @@ public class InMemoryStorageProvider extends AbstractStorageProvider {
     public void clear() {
         jobQueue.clear();
         recurringJobs.clear();
-        metadata.keySet().removeIf(x -> !(x.endsWith(METADATA_OWNER_CLUSTER)));
+        metadata.keySet().removeIf(x -> !x.endsWith(METADATA_OWNER_CLUSTER));
     }
 
     @Override
@@ -393,14 +392,10 @@ public class InMemoryStorageProvider extends AbstractStorageProvider {
 
     private Comparator<Job> getJobComparator(AmountRequest amountRequest) {
         List<Comparator<Job>> comparators = amountRequest.getAllOrderTerms(Job.ALLOWED_SORT_COLUMNS.keySet()).stream()
-                .map(orderTerm -> {
-                    Comparator<Job> jobComparator = comparing(Job.ALLOWED_SORT_COLUMNS.get(orderTerm.getFieldName()));
-                    return (OrderTerm.Order.ASC == orderTerm.getOrder()) ? jobComparator : jobComparator.reversed();
-                })
+                .map(orderTerm -> Job.ALLOWED_SORT_COLUMNS.toComparator(orderTerm))
                 .collect(toList());
         return comparators.stream()
                 .reduce(Comparator::thenComparing)
-                .orElse((a, b) -> 0); // default order
+                .orElse((unusedJobA, unusedJobB) -> 0); // default order
     }
-
 }

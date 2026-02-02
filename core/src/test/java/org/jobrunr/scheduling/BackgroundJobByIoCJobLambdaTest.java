@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -112,6 +113,20 @@ public class BackgroundJobByIoCJobLambdaTest {
     }
 
     @Test
+    void testEnqueueWithInterface() {
+        JobId jobId = BackgroundJob.<TestServiceInterface>enqueue(x -> x.doWork());
+        await().atMost(FIVE_SECONDS).until(() -> storageProvider.getJobById(jobId).getState() == SUCCEEDED);
+        assertThat(storageProvider.getJobById(jobId)).hasStates(ENQUEUED, PROCESSING, SUCCEEDED);
+    }
+
+    @Test
+    void testEnqueueWithInterfaceAndMethodReference() {
+        JobId jobId = BackgroundJob.enqueue(TestServiceInterface::doWork);
+        await().atMost(FIVE_SECONDS).until(() -> storageProvider.getJobById(jobId).getState() == SUCCEEDED);
+        assertThat(storageProvider.getJobById(jobId)).hasStates(ENQUEUED, PROCESSING, SUCCEEDED);
+    }
+
+    @Test
     void testEnqueueUsingServiceInstance() {
         JobId jobId = BackgroundJob.enqueue(() -> testServiceForIoC.doWork());
         await().atMost(FIVE_SECONDS).until(() -> storageProvider.getJobById(jobId).getState() == SUCCEEDED);
@@ -192,7 +207,7 @@ public class BackgroundJobByIoCJobLambdaTest {
 
     @Test
     void testScheduleWithZonedDateTime() {
-        JobId jobId = BackgroundJob.<TestService>schedule(ZonedDateTime.now().plus(ofMillis(1500)), x -> x.doWork());
+        JobId jobId = BackgroundJob.<TestService>schedule(ZonedDateTime.now(ZoneId.systemDefault()).plus(ofMillis(1500)), x -> x.doWork());
         await().during(ONE_SECOND).until(() -> storageProvider.getJobById(jobId).getState() == SCHEDULED);
         await().atMost(FIVE_SECONDS).until(() -> storageProvider.getJobById(jobId).getState() == SUCCEEDED);
         assertThat(storageProvider.getJobById(jobId)).hasStates(SCHEDULED, ENQUEUED, PROCESSING, SUCCEEDED);
@@ -200,7 +215,7 @@ public class BackgroundJobByIoCJobLambdaTest {
 
     @Test
     void testScheduleWithOffsetDateTime() {
-        JobId jobId = BackgroundJob.<TestService>schedule(OffsetDateTime.now().plus(ofMillis(1500)), x -> x.doWork());
+        JobId jobId = BackgroundJob.<TestService>schedule(OffsetDateTime.now(ZoneId.systemDefault()).plus(ofMillis(1500)), x -> x.doWork());
         await().during(ONE_SECOND).until(() -> storageProvider.getJobById(jobId).getState() == SCHEDULED);
         await().atMost(FIVE_SECONDS).until(() -> storageProvider.getJobById(jobId).getState() == SUCCEEDED);
         assertThat(storageProvider.getJobById(jobId)).hasStates(SCHEDULED, ENQUEUED, PROCESSING, SUCCEEDED);
@@ -208,7 +223,7 @@ public class BackgroundJobByIoCJobLambdaTest {
 
     @Test
     void testScheduleWithLocalDateTime() {
-        JobId jobId = BackgroundJob.<TestService>schedule(LocalDateTime.now().plus(ofMillis(1500)), x -> x.doWork());
+        JobId jobId = BackgroundJob.<TestService>schedule(LocalDateTime.now(ZoneId.systemDefault()).plus(ofMillis(1500)), x -> x.doWork());
         await().during(ONE_SECOND).until(() -> storageProvider.getJobById(jobId).getState() == SCHEDULED);
         await().atMost(FIVE_SECONDS).until(() -> storageProvider.getJobById(jobId).getState() == SUCCEEDED);
         assertThat(storageProvider.getJobById(jobId)).hasStates(SCHEDULED, ENQUEUED, PROCESSING, SUCCEEDED);

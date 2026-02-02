@@ -24,6 +24,7 @@ import org.jobrunr.storage.InMemoryStorageProvider;
 import org.jobrunr.storage.StorageProvider;
 import org.jobrunr.storage.nosql.mongo.MongoDBStorageProvider;
 import org.jobrunr.storage.sql.common.DefaultSqlStorageProvider;
+import org.jobrunr.stubs.Mocks;
 import org.jobrunr.stubs.TestService;
 import org.jobrunr.utils.mapper.gson.GsonJsonMapper;
 import org.jobrunr.utils.mapper.jackson.JacksonJsonMapper;
@@ -65,7 +66,7 @@ public class JobRunrAutoConfigurationTest {
     }
 
     @Test
-    void selectJacksonMapperIfNoOtherJsonSerializersPresent() {
+    void selectJacksonJsonMapperIfNoOtherJsonSerializersPresent() {
         this.contextRunner
                 .withUserConfiguration(InMemoryStorageProvider.class)
                 .withClassLoader(new FilteredClassLoader(Gson.class, kotlinx.serialization.json.Json.class))
@@ -167,8 +168,9 @@ public class JobRunrAutoConfigurationTest {
                 .withPropertyValues("jobrunr.background-job-server.enabled=true")
                 .withPropertyValues("jobrunr.background-job-server.carbon-aware-job-processing.enabled=true")
                 .withPropertyValues("jobrunr.background-job-server.carbon-aware-job-processing.area-code=FR")
-                .withPropertyValues("jobrunr.background-job-server.carbon-aware-job-processing.api-client-connect-timeout=500")
-                .withPropertyValues("jobrunr.background-job-server.carbon-aware-job-processing.api-client-read-timeout=300")
+                .withPropertyValues("jobrunr.background-job-server.carbon-aware-job-processing.api-client-connect-timeout=500ms")
+                .withPropertyValues("jobrunr.background-job-server.carbon-aware-job-processing.api-client-read-timeout=300ms")
+                .withPropertyValues("jobrunr.background-job-server.carbon-aware-job-processing.poll-interval-in-minutes=15")
                 .withUserConfiguration(InMemoryStorageProvider.class).run((context) -> {
                     BackgroundJobServer backgroundJobServer = context.getBean(BackgroundJobServer.class);
                     CarbonAwareJobProcessingConfigurationReader carbonAwareJobProcessingConfiguration = backgroundJobServer.getConfiguration().getCarbonAwareJobProcessingConfiguration();
@@ -176,6 +178,7 @@ public class JobRunrAutoConfigurationTest {
                             .hasEnabled(true)
                             .hasApiClientConnectTimeout(Duration.ofMillis(500))
                             .hasApiClientReadTimeout(Duration.ofMillis(300))
+                            .hasPollIntervalInMinutes(15)
                             .hasAreaCode("FR");
                 });
     }
@@ -217,7 +220,7 @@ public class JobRunrAutoConfigurationTest {
     }
 
     @Test
-    void backgroundJobServerAutoConfigurationTakesPollIntervalInSecondsAndServerTimeoutPollIntervalMultiplicand() {
+    void backgroundJobServerAutoConfigurationTakesAllBackgroundServerPollIntervals() {
         this.contextRunner
                 .withPropertyValues("jobrunr.background-job-server.enabled=true")
                 .withPropertyValues("jobrunr.background-job-server.poll-interval-in-seconds=5")

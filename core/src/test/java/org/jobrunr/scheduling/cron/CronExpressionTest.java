@@ -7,7 +7,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -17,12 +16,12 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.stream.Stream;
 
-import static java.time.LocalDateTime.now;
 import static java.time.ZoneId.systemDefault;
 import static java.time.ZoneOffset.UTC;
 import static java.time.temporal.ChronoUnit.HOURS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.jobrunr.utils.LocalDateUtils.nowUsingSystemDefault;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 class CronExpressionTest {
@@ -53,11 +52,11 @@ class CronExpressionTest {
         // always use next hour
         int hour = now().getHour() + 1;
         int daysToAdd = hour >= 24 ? 1 : 0;
-        hour = hour >= 24 ? 0 : hour;
+        hour = hour == 24 ? 0 : hour;
 
         Instant actualNextInstant = new CronExpression(Cron.daily(hour)).next(createdAtNotRelevantInstant, Instant.now(), UTC);
 
-        Instant expectedNextInstant = OffsetDateTime.of(LocalDate.now().plusDays(daysToAdd), LocalTime.of(hour, 0), UTC).toInstant();
+        Instant expectedNextInstant = OffsetDateTime.of(nowUsingSystemDefault().plusDays(daysToAdd), LocalTime.of(hour, 0), UTC).toInstant();
 
         assertThat(actualNextInstant).isEqualTo(expectedNextInstant);
     }
@@ -65,7 +64,7 @@ class CronExpressionTest {
     @Test
     @Because("github issue 31")
     void dailyRecurringJobsTakeTimeZonesCorrectlyIntoAccount() {
-        LocalDateTime localDateTime = LocalDateTime.now();
+        LocalDateTime localDateTime = now();
         int hour = localDateTime.getHour();
         int minute = localDateTime.getMinute();
         if (minute < 1) {
@@ -84,7 +83,7 @@ class CronExpressionTest {
     @Test
     @Because("github issue 31")
     void minutelyRecurringJobsTakeTimeZonesCorrectlyIntoAccount() {
-        LocalDateTime localDateTime = LocalDateTime.now();
+        LocalDateTime localDateTime = now();
         int nextMinute = localDateTime.plusMinutes(1).getMinute();
 
         Instant nextRun = new CronExpression(Cron.hourly(nextMinute)).next(createdAtNotRelevantInstant, Instant.now(), ZoneOffset.of("+02:00"));
@@ -502,6 +501,12 @@ class CronExpressionTest {
                 arguments("0 0 0 1,5,20 * *", "2019-01-21 23:09:00", "2019-02-01 00:00:00"),
 
                 // test days step/every
+                arguments("0 0 0 1/1 * *", "2019-01-27 00:03:01", "2019-01-28 00:00:00"),
+                arguments("0 0 0 1/1 * *", "2019-01-28 00:03:01", "2019-01-29 00:00:00"),
+                arguments("0 0 0 1/1 * *", "2019-01-29 00:03:01", "2019-01-30 00:00:00"),
+                arguments("0 0 0 1/1 * *", "2019-01-30 00:03:01", "2019-01-31 00:00:00"),
+                arguments("0 0 0 1/1 * *", "2019-01-31 00:03:01", "2019-02-01 00:00:00"),
+
                 arguments("0 0 0 */3 * *", "2019-01-01 00:03:01", "2019-01-04 00:00:00"),
                 arguments("0 0 0 */3 * *", "2019-01-03 02:00:00", "2019-01-04 00:00:00"),
                 arguments("0 0 0 */3 * *", "2019-01-05 03:01:00", "2019-01-07 00:00:00"),
@@ -578,6 +583,12 @@ class CronExpressionTest {
                 arguments("0 0 1 1,5,8 *", "2019-10-02 23:09:00", "2020-01-01 00:00:00"),
 
                 // test months step/every
+                arguments("0 0 1 1/1 *", "2019-08-01 00:03:01", "2019-09-01 00:00:00"),
+                arguments("0 0 1 1/1 *", "2019-09-01 00:03:01", "2019-10-01 00:00:00"),
+                arguments("0 0 1 1/1 *", "2019-10-01 00:03:01", "2019-11-01 00:00:00"),
+                arguments("0 0 1 1/1 *", "2019-11-01 00:03:01", "2019-12-01 00:00:00"),
+                arguments("0 0 1 1/1 *", "2019-12-01 00:03:01", "2020-01-01 00:00:00"),
+
                 arguments("0 0 1 */3 *", "2019-01-01 00:03:01", "2019-04-01 00:00:00"),
                 arguments("0 0 1 */3 *", "2019-02-01 02:00:00", "2019-04-01 00:00:00"),
                 arguments("0 0 1 */3 *", "2019-04-01 03:01:00", "2019-07-01 00:00:00"),
@@ -592,6 +603,13 @@ class CronExpressionTest {
                 arguments("0 0 1 5/3 *", "2019-07-01 22:00:00", "2019-08-01 00:00:00"),
                 arguments("0 0 1 5/3 *", "2019-09-01 23:00:00", "2019-11-01 00:00:00"),
                 arguments("0 0 1 5/3 *", "2019-12-01 23:00:00", "2020-05-01 00:00:00"),
+
+                arguments("0 0 1 8/2 *", "2019-01-01 00:00:00", "2019-08-01 00:00:00"),
+                arguments("0 0 1 8/2 *", "2019-07-01 12:00:00", "2019-08-01 00:00:00"),
+                arguments("0 0 1 8/2 *", "2019-08-01 19:00:00", "2019-10-01 00:00:00"),
+                arguments("0 0 1 8/2 *", "2019-09-01 22:00:00", "2019-10-01 00:00:00"),
+                arguments("0 0 1 8/2 *", "2019-11-01 23:00:00", "2019-12-01 00:00:00"),
+                arguments("0 0 1 8/2 *", "2019-12-01 23:00:00", "2020-08-01 00:00:00"),
 
                 arguments("0 0 1 5-12/3 *", "2019-01-01 00:00:00", "2019-05-01 00:00:00"),
                 arguments("0 0 1 5-12/3 *", "2019-04-01 12:00:00", "2019-05-01 00:00:00"),
@@ -759,4 +777,7 @@ class CronExpressionTest {
         );
     }
 
+    private static LocalDateTime now() {
+        return LocalDateTime.now(ZoneId.systemDefault());
+    }
 }
